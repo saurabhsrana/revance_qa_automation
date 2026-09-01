@@ -1,0 +1,22 @@
+# Secrets / local env
+.env
+.env.local
+.env.*.local
+
+# Runtime / tooling
+node_modules/
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/
+/screenshots/
+
+# Allure + Cucumber + failure artifacts
+reports/allure-results/
+reports/allure-report/
+reports/cucumber.json
+reports/traces/
+reports/screenshots/
+reports/logs/
+reports/report.html

@@ -1,0 +1,10 @@
+# Default owners for automation framework changes.
+# Replace @org/qa-automation with your GitHub team or usernames.
+* @Saurabh.Rana
+
+/features/** @Saurabh.Rana
+/src/steps/** @Saurabh.Rana
+/src/pages/** @Saurabh.Rana
+/src/hooks/** @Saurabh.Rana
+/cucumber.js @Saurabh.Rana
+/.github/workflows/** @Saurabh.Rana
