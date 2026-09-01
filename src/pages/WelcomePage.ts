@@ -1,5 +1,5 @@
-import { BasePage } from './BasePage';
-import { PhoneOtpFormComponent } from './components/PhoneOtpFormComponent';
+import { BasePage } from "./BasePage";
+import { PhoneOtpFormComponent } from "./components/PhoneOtpFormComponent";
 
 /**
  * Page Object Model for the Revance Rewards Welcome Page
@@ -9,7 +9,7 @@ import { PhoneOtpFormComponent } from './components/PhoneOtpFormComponent';
  * Form locators live in PhoneOtpFormComponent.
  */
 export class WelcomePage extends BasePage {
-  readonly url: string = '/welcome';
+  readonly url: string = "/welcome";
   readonly phoneOtp: PhoneOtpFormComponent;
 
   constructor(page: ConstructorParameters<typeof BasePage>[0]) {
@@ -18,8 +18,8 @@ export class WelcomePage extends BasePage {
   }
 
   async goto() {
-    await super.goto(new URL(this.url, this.loyaltyBaseUrl() + '/').toString());
-    await this.phoneOtp.phoneInput().waitFor({ state: 'visible' });
+    await super.goto(new URL(this.url, this.loyaltyBaseUrl() + "/").toString());
+    await this.phoneOtp.phoneInput().waitFor({ state: "visible" });
   }
 
   async enterPhoneNumber(phone: string) {
@@ -31,26 +31,26 @@ export class WelcomePage extends BasePage {
   }
 
   async clickContactUs() {
-    await this.page.getByRole('link', { name: /contact us/i }).click();
+    await this.page.getByRole("link", { name: /contact us/i }).click();
   }
 
   /** Whether the Contact Us link is visible (assertion belongs in the step). */
   async isContactUsVisible(timeout = 15_000): Promise<boolean> {
-    const contactLink = this.page.getByRole('link', { name: /contact us/i });
-    await contactLink.waitFor({ state: 'visible', timeout });
+    const contactLink = this.page.getByRole("link", { name: /contact us/i });
+    await contactLink.waitFor({ state: "visible", timeout });
     return contactLink.isVisible();
   }
 
   async clickTermsOfUse() {
-    await this.page.getByRole('link', { name: /terms of use/i }).click();
+    await this.page.getByRole("link", { name: /terms of use/i }).click();
   }
 
   async clickPrivacyPolicy() {
-    await this.page.getByRole('link', { name: /privacy policy/i }).click();
+    await this.page.getByRole("link", { name: /privacy policy/i }).click();
   }
 
   async getHeading(): Promise<string> {
-    const heading = await this.page.textContent('h1');
-    return heading ?? '';
+    const heading = await this.page.textContent("h1");
+    return heading ?? "";
   }
 }

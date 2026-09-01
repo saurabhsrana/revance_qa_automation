@@ -1,4 +1,4 @@
-import config from './index';
+import config from "./index";
 
 export type OceAuthConfig = {
   baseUrl: string;
@@ -26,9 +26,9 @@ export function resolveOceAuthConfig(): OceAuthConfig {
   const c = config as OceConfigShape;
 
   const clean = (value: string | undefined): string => {
-    const v = value?.trim() ?? '';
+    const v = value?.trim() ?? "";
     // Ignore copied placeholders like "..." from example commands.
-    if (!v || /^\.+$/.test(v) || v === '...') return '';
+    if (!v || /^\.+$/.test(v) || v === "...") return "";
     return v;
   };
 
@@ -36,22 +36,28 @@ export function resolveOceAuthConfig(): OceAuthConfig {
     clean(process.env.OCE_BASE_URL) ||
     c.oceBaseUrlnew?.trim() ||
     c.oceBaseUrl?.trim() ||
-    '';
+    "";
 
-  const username = clean(process.env.OCE_USERNAME) || c.oceUsername?.trim() || '';
-  const password = clean(process.env.OCE_PASSWORD) || c.ocePassword?.trim() || '';
+  const username =
+    clean(process.env.OCE_USERNAME) || c.oceUsername?.trim() || "";
+  const password =
+    clean(process.env.OCE_PASSWORD) || c.ocePassword?.trim() || "";
   const practice =
-    clean(process.env.OCE_PRACTICE) || c.ocePractice?.trim() || 'Pleasanton Dermatology';
+    clean(process.env.OCE_PRACTICE) ||
+    c.ocePractice?.trim() ||
+    "Pleasanton Dermatology";
   const location =
-    clean(process.env.OCE_LOCATION) || c.oceLocation?.trim() || 'Pleasanton - CA';
+    clean(process.env.OCE_LOCATION) ||
+    c.oceLocation?.trim() ||
+    "Pleasanton - CA";
 
   const missing: string[] = [];
-  if (!baseUrl) missing.push('oceBaseUrl / OCE_BASE_URL');
-  if (!username) missing.push('oceUsername / OCE_USERNAME');
-  if (!password) missing.push('ocePassword / OCE_PASSWORD');
+  if (!baseUrl) missing.push("oceBaseUrl / OCE_BASE_URL");
+  if (!username) missing.push("oceUsername / OCE_USERNAME");
+  if (!password) missing.push("ocePassword / OCE_PASSWORD");
   if (missing.length) {
     throw new Error(
-      `Missing OCE auth config for TEST_ENV=${process.env.TEST_ENV || 'dev'}: ${missing.join(', ')}`
+      `Missing OCE auth config for TEST_ENV=${process.env.TEST_ENV || "dev"}: ${missing.join(", ")}`,
     );
   }
 

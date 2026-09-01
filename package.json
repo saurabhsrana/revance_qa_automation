@@ -29,8 +29,8 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc --noEmit",
-    "format": "prettier --write \"src/**/*.{ts,js}\" \"features/**/*.feature\" \"cucumber.js\"",
-    "format:check": "prettier --check \"src/**/*.{ts,js}\" \"features/**/*.feature\" \"cucumber.js\""
+    "format": "prettier --write \"src/**/*.{ts,js}\" \"cucumber.js\"",
+    "format:check": "prettier --check \"src/**/*.{ts,js}\" \"cucumber.js\""
   },
   "devDependencies": {
     "@cucumber/cucumber": "^12.7.0",

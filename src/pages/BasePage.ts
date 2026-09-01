@@ -1,6 +1,6 @@
-import fs from 'node:fs';
-import path from 'node:path';
-import { type Locator, type Page, expect } from '@playwright/test';
+import fs from "node:fs";
+import path from "node:path";
+import { type Locator, type Page, expect } from "@playwright/test";
 
 /**
  * Shared Page Object base — navigation, waits, and safe interactions.
@@ -16,17 +16,20 @@ export abstract class BasePage {
   /** Absolute or path-relative navigation with a sensible default wait. */
   async goto(
     url: string,
-    options?: { waitUntil?: 'load' | 'domcontentloaded' | 'commit'; timeout?: number }
+    options?: {
+      waitUntil?: "load" | "domcontentloaded" | "commit";
+      timeout?: number;
+    },
   ): Promise<void> {
     await this.page.goto(url, {
-      waitUntil: options?.waitUntil ?? 'domcontentloaded',
+      waitUntil: options?.waitUntil ?? "domcontentloaded",
       timeout: options?.timeout,
     });
   }
 
   /** Wait until locator is visible (auto-wait replacement for fixed sleeps). */
   async waitForVisible(locator: Locator, timeout = 15_000): Promise<void> {
-    await locator.waitFor({ state: 'visible', timeout });
+    await locator.waitFor({ state: "visible", timeout });
   }
 
   /** Click after visible — preferred over raw page.click in page objects. */
@@ -58,15 +61,15 @@ export abstract class BasePage {
   /** Resolve app base URL from env (loyalty) with a safe default. */
   protected loyaltyBaseUrl(): string {
     return (
-      process.env.BASE_URL?.replace(/\/$/, '') ||
-      'https://revance-loyalty-git-dev-revances-projects.vercel.app'
+      process.env.BASE_URL?.replace(/\/$/, "") ||
+      "https://revance-loyalty-git-dev-revances-projects.vercel.app"
     );
   }
 }
 
 /** Ensure failure artifact directories exist. */
 export function ensureReportDirs(): void {
-  for (const dir of ['reports/screenshots', 'reports/traces', 'reports/logs']) {
+  for (const dir of ["reports/screenshots", "reports/traces", "reports/logs"]) {
     fs.mkdirSync(path.resolve(process.cwd(), dir), { recursive: true });
   }
 }

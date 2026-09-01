@@ -1,9 +1,13 @@
-import { assertBaseUrlConfigured, loadDotEnv } from './env';
+import { assertBaseUrlConfigured, loadDotEnv } from "./env";
 
 loadDotEnv();
 
-const envName = (process.env.TEST_ENV || process.env.ENV || 'dev').toLowerCase();
-const resolvedEnv = envName === 'qa' || envName === 'prod' ? envName : 'dev';
+const envName = (
+  process.env.TEST_ENV ||
+  process.env.ENV ||
+  "dev"
+).toLowerCase();
+const resolvedEnv = envName === "qa" || envName === "prod" ? envName : "dev";
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports -- dynamic env file selection
 const config = require(`./env.${resolvedEnv}`).default as {

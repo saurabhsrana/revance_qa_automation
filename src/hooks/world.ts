@@ -1,5 +1,9 @@
-import { setWorldConstructor, World, type IWorldOptions } from '@cucumber/cucumber';
-import type { Browser, BrowserContext, Page } from '@playwright/test';
+import {
+  setWorldConstructor,
+  World,
+  type IWorldOptions,
+} from "@cucumber/cucumber";
+import type { Browser, BrowserContext, Page } from "@playwright/test";
 
 /**
  * Per-scenario Cucumber World — parallel-safe browser isolation.
@@ -20,7 +24,7 @@ export class PlaywrightWorld extends World {
   requirePage(): Page {
     if (!this.page) {
       throw new Error(
-        'Playwright page is not initialized on World. Ensure Before hooks ran successfully.'
+        "Playwright page is not initialized on World. Ensure Before hooks ran successfully.",
       );
     }
     return this.page;

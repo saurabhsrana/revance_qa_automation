@@ -3,13 +3,13 @@
  * Credentials: set OCE_USERNAME / OCE_PASSWORD (or copy from .env.example → .env).
  */
 export default {
-  baseUrl: 'https://revance-loyalty-env-qa-revances-projects.vercel.app',
-  oceBaseUrl: 'https://revance-oce--fulldev.sandbox.my.site.com/s/login/',
-  oceBaseUrlnew: 'https://revance-oce--fulldev.sandbox.my.site.com/s/login/',
-  headlessUrl: 'https://revance-oce--fulldev.sandbox.my.site.com/s/login/',
-  cdpUrl: 'https://revance-loyalty-env-qa-revances-projects.vercel.app/welcome',
-  oceUsername: process.env.OCE_USERNAME?.trim() || '',
-  ocePassword: process.env.OCE_PASSWORD?.trim() || '',
-  ocePractice: process.env.OCE_PRACTICE?.trim() || 'Pleasanton Dermatology',
-  oceLocation: process.env.OCE_LOCATION?.trim() || 'Pleasanton - CA',
+  baseUrl: "https://revance-loyalty-env-qa-revances-projects.vercel.app",
+  oceBaseUrl: "https://revance-oce--fulldev.sandbox.my.site.com/s/login/",
+  oceBaseUrlnew: "https://revance-oce--fulldev.sandbox.my.site.com/s/login/",
+  headlessUrl: "https://revance-oce--fulldev.sandbox.my.site.com/s/login/",
+  cdpUrl: "https://revance-loyalty-env-qa-revances-projects.vercel.app/welcome",
+  oceUsername: process.env.OCE_USERNAME?.trim() || "",
+  ocePassword: process.env.OCE_PASSWORD?.trim() || "",
+  ocePractice: process.env.OCE_PRACTICE?.trim() || "Pleasanton Dermatology",
+  oceLocation: process.env.OCE_LOCATION?.trim() || "Pleasanton - CA",
 };
