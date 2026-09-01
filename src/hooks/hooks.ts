@@ -13,7 +13,11 @@ import { attachment, ContentType } from "allure-js-commons";
 import fs from "node:fs";
 import path from "node:path";
 import config from "../config";
-import { launchBrowser, resolveBrowserName } from "../config/browser.factory";
+import {
+  buildBrowserContextOptions,
+  launchBrowser,
+  resolveBrowserName,
+} from "../config/browser.factory";
 import { ensureReportDirs } from "../pages/BasePage";
 import { logger } from "../utils/logger";
 import type { PlaywrightWorld } from "./world";
@@ -29,6 +33,7 @@ Before(async function (this: PlaywrightWorld, { pickle }) {
   try {
     this.browser = await launchBrowser();
     this.context = await this.browser.newContext({
+      ...buildBrowserContextOptions(),
       recordVideo:
         process.env.CUCUMBER_VIDEO === "true"
           ? { dir: "test-results/cucumber-video" }

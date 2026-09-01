@@ -5,11 +5,17 @@
 #   - Manual run: GitHub → Actions → CI → Run workflow
 #
 # Required repo secrets (Settings → Secrets and variables → Actions):
-#   BASE_URL    — Loyalty app URL (QA)
-#   SIGNUP_OTP  — OTP code for completeprofile scenario
+#   BASE_URL                  — Loyalty app URL (QA); falls back to env.qa.ts when unset
+#   SIGNUP_OTP                — OTP code for completeprofile scenario
+#   VERCEL_PROTECTION_BYPASS  — Vercel deployment protection bypass secret (required if QA shows "We're verifying your browser")
 #
-# After a run: open the job → Summary tab for pass/fail table with @TC-* links.
-# Download artifacts for Allure HTML, traces, and screenshots.
+# One-time GitHub Pages setup (for browsable Allure report):
+#   Settings → Pages → Build and deployment → Source: GitHub Actions
+#
+# After a run:
+#   - Cucumber job → Summary tab: pass/fail table, error messages, inline screenshots
+#   - Artifacts: download cucumber-{browser}-artifacts
+#   - publish-allure job → Summary tab: GitHub Pages URL for Allure HTML
 
 name: CI
 
@@ -87,6 +93,7 @@ jobs:
           CUCUMBER_RETRY: '1'
           BASE_URL: ${{ secrets.BASE_URL }}
           SIGNUP_OTP: ${{ secrets.SIGNUP_OTP }}
+          VERCEL_PROTECTION_BYPASS: ${{ secrets.VERCEL_PROTECTION_BYPASS }}
           ALLURE_TMS_URL: https://github.com/${{ github.repository }}/issues/
         run: npx cucumber-js --profile smoke
 
@@ -102,10 +109,11 @@ jobs:
         run: npm run traceability:generate
         continue-on-error: true
 
-      - name: GitHub Job Summary (TC linkage)
+      - name: GitHub Job Summary (TC linkage + failures)
         if: ${{ !cancelled() }}
         env:
           ALLURE_TMS_URL: https://github.com/${{ github.repository }}/issues/
+          BROWSER: ${{ matrix.browser }}
         run: npm run ci:summary
 
       - name: Upload Allure + failure artifacts
@@ -122,7 +130,49 @@ jobs:
             reports/logs/
             docs/traceability-matrix.md
           retention-days: 14
+          if-no-files-found: warn
 
       - name: Fail job if Cucumber failed
         if: steps.cucumber.outcome == 'failure'
         run: exit 1
+
+  publish-allure:
+    name: Publish Allure (GitHub Pages)
+    needs: cucumber-loyalty
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+      actions: read
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - name: Download chromium Allure report
+        uses: actions/download-artifact@v4
+        with:
+          name: cucumber-chromium-artifacts
+          path: artifact
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Allure site
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: artifact/reports/allure-report
+
+      - name: Deploy to GitHub Pages
+        id: deploy
+        uses: actions/deploy-pages@v4
+
+      - name: Allure report URL
+        run: |
+          echo "## Allure report (GitHub Pages)" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Browse the latest Allure HTML report:" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "**${{ steps.deploy.outputs.page_url }}**" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Includes pass/fail, step attachments, failure screenshots, and downloadable Playwright trace zips." >> "$GITHUB_STEP_SUMMARY"

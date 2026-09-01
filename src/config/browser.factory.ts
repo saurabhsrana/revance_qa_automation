@@ -37,6 +37,28 @@ export function shouldRunHeadless(): boolean {
   return !!process.env.CI;
 }
 
+/** Vercel deployment protection bypass (required for headless CI against protected QA URLs). */
+export function resolveVercelBypassSecret(): string | undefined {
+  const secret =
+    process.env.VERCEL_PROTECTION_BYPASS?.trim() ||
+    process.env.VERCEL_AUTOMATION_BYPASS_SECRET?.trim();
+  return secret || undefined;
+}
+
+/** Playwright context options — adds Vercel bypass headers when configured. */
+export function buildBrowserContextOptions(): {
+  extraHTTPHeaders?: Record<string, string>;
+} {
+  const bypass = resolveVercelBypassSecret();
+  if (!bypass) return {};
+  return {
+    extraHTTPHeaders: {
+      "x-vercel-protection-bypass": bypass,
+      "x-vercel-set-bypass-cookie": "true",
+    },
+  };
+}
+
 /**
  * Launch Chromium, Firefox, or WebKit for Cucumber workers.
  */

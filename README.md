@@ -64,6 +64,9 @@ In GitHub: **Settings → Secrets and variables → Actions → New repository s
 |--------|---------|----------|
 | `BASE_URL` | `https://…vercel.app` | Loyalty app under test |
 | `SIGNUP_OTP` | `112233` | OTP in completeprofile flow |
+| `VERCEL_PROTECTION_BYPASS` | _(from Vercel project settings)_ | Bypasses Vercel "We're verifying your browser" in CI |
+
+If QA shows **"We're verifying your browser"**, add `VERCEL_PROTECTION_BYPASS` from Vercel → **Settings → Deployment Protection → Protection Bypass for Automation**.
 
 ### Manual run
 
@@ -71,5 +74,7 @@ In GitHub: **Settings → Secrets and variables → Actions → New repository s
 
 ### Reading results
 
-- **Summary** tab on the Cucumber job — scenario table with links to GitHub Issues `#1`, `#2`, …
-- **Artifacts** — download `cucumber-chromium-artifacts` (etc.), open `reports/allure-report/index.html` locally
+- **Cucumber job → Summary** — pass/fail table, failure error messages, inline screenshots
+- **Artifacts** — download `cucumber-chromium-artifacts` (etc.); open `reports/allure-report/index.html` locally
+- **publish-allure job → Summary** — clickable **GitHub Pages** URL for the Allure report (enable **Settings → Pages → Source: GitHub Actions** once)
+- **Traces** — from the artifact zip, run `npx playwright show-trace reports/traces/<file>.zip`
