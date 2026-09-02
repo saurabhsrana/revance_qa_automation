@@ -77,6 +77,24 @@ jobs:
       - name: Reset Allure folders
         run: npm run allure:clean
 
+      - name: Check required secrets (presence only)
+        env:
+          BASE_URL: ${{ secrets.BASE_URL }}
+          SIGNUP_OTP: ${{ secrets.SIGNUP_OTP }}
+          VERCEL_PROTECTION_BYPASS: ${{ secrets.VERCEL_PROTECTION_BYPASS }}
+        run: |
+          {
+            echo "## Secret presence (values not printed)"
+            echo ""
+            echo "- BASE_URL: $( [ -n \"$BASE_URL\" ] && echo set || echo MISSING )"
+            echo "- SIGNUP_OTP: $( [ -n \"$SIGNUP_OTP\" ] && echo set || echo MISSING )"
+            echo "- VERCEL_PROTECTION_BYPASS: $( [ -n \"$VERCEL_PROTECTION_BYPASS\" ] && echo set || echo MISSING )"
+            echo ""
+            if [ -z "$VERCEL_PROTECTION_BYPASS" ]; then
+              echo "**Warning:** without VERCEL_PROTECTION_BYPASS, headless CI often hits Vercel \"We're verifying your browser\" and fails."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Playwright UI (--project=ui; api project skipped until tests/api is populated)
         id: playwright
         continue-on-error: true
@@ -91,6 +109,25 @@ jobs:
           VERCEL_PROTECTION_BYPASS: ${{ secrets.VERCEL_PROTECTION_BYPASS }}
           ALLURE_TMS_URL: https://github.com/${{ github.repository }}/issues/
         run: npx playwright test --project=ui --retries=1
+
+      - name: Surface Playwright last-run into Job Summary
+        if: always()
+        run: |
+          {
+            echo "## Playwright last-run"
+            echo ""
+            if [ -f test-results/.last-run.json ]; then
+              echo '```json'
+              cat test-results/.last-run.json
+              echo '```'
+            else
+              echo "_No test-results/.last-run.json (Playwright may have failed before writing results)._"
+            fi
+            echo ""
+            echo "### Spec files present"
+            echo ""
+            ls -la tests/ui || true
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Generate Allure report
         if: always()
@@ -134,8 +171,10 @@ jobs:
   publish-allure:
     name: Publish Allure (GitHub Pages)
     needs: playwright-ui
+    # Artifact upload above is the primary publish path. Pages is best-effort when enabled.
     if: always() && needs.playwright-ui.result != 'cancelled'
     runs-on: ubuntu-latest
+    continue-on-error: true
     permissions:
       pages: write
       id-token: write
@@ -151,23 +190,39 @@ jobs:
           path: artifact
 
       - name: Setup Pages
+        id: pages
+        continue-on-error: true
         uses: actions/configure-pages@v5
 
       - name: Upload Allure site
+        if: steps.pages.outcome == 'success'
+        continue-on-error: true
         uses: actions/upload-pages-artifact@v3
         with:
           path: artifact/reports/allure-report
 
       - name: Deploy to GitHub Pages
         id: deploy
+        if: steps.pages.outcome == 'success'
+        continue-on-error: true
         uses: actions/deploy-pages@v4
 
       - name: Allure report URL
+        if: always()
         run: |
-          echo "## Allure report (GitHub Pages)" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "Browse the latest Allure HTML report:" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "**${{ steps.deploy.outputs.page_url }}**" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "Includes pass/fail, step attachments, failure screenshots, and downloadable Playwright trace zips." >> "$GITHUB_STEP_SUMMARY"
+          {
+            echo "## Allure report publish"
+            echo ""
+            if [ "${{ steps.deploy.outcome }}" = "success" ] && [ -n "${{ steps.deploy.outputs.page_url }}" ]; then
+              echo "Browse the latest Allure HTML report:"
+              echo ""
+              echo "**${{ steps.deploy.outputs.page_url }}**"
+              echo ""
+              echo "Includes pass/fail, step attachments, failure screenshots, and downloadable Playwright trace zips."
+            else
+              echo "GitHub Pages publish skipped or failed (Pages may not be enabled for this repo)."
+              echo "Download the **playwright-ui-artifacts** artifact and open \`reports/allure-report/index.html\`."
+              echo ""
+              echo "To enable Pages: Settings → Pages → Build and deployment → Source: **GitHub Actions**."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
