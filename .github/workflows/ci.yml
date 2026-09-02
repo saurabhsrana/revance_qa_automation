@@ -13,8 +13,8 @@
 #   Settings → Pages → Build and deployment → Source: GitHub Actions
 #
 # After a run:
-#   - Cucumber job → Summary tab: pass/fail table, error messages, inline screenshots
-#   - Artifacts: download cucumber-{browser}-artifacts
+#   - Playwright UI job → Summary tab: pass/fail table, failure details
+#   - Artifacts: download playwright-ui-artifacts
 #   - publish-allure job → Summary tab: GitHub Pages URL for Allure HTML
 
 name: CI
@@ -56,15 +56,11 @@ jobs:
       - name: Prettier check
         run: npm run format:check
 
-  cucumber-loyalty:
-    name: Cucumber (${{ matrix.browser }})
+  playwright-ui:
+    name: Playwright UI
     needs: static-checks
     runs-on: ubuntu-latest
     timeout-minutes: 60
-    strategy:
-      fail-fast: false
-      matrix:
-        browser: [chromium, firefox, webkit]
     steps:
       - uses: actions/checkout@v4
 
@@ -75,71 +71,70 @@ jobs:
 
       - run: npm ci
 
-      - name: Install Playwright browser
-        run: npx playwright install --with-deps ${{ matrix.browser }}
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
 
       - name: Reset Allure folders
         run: npm run allure:clean
 
-      - name: Cucumber smoke (welcome + completeprofile)
-        id: cucumber
+      - name: Playwright UI (--project=ui; api project skipped until tests/api is populated)
+        id: playwright
         continue-on-error: true
         env:
           CI: true
           HEADLESS: 'true'
           TEST_ENV: qa
-          BROWSER: ${{ matrix.browser }}
+          BROWSER: chromium
           PARALLEL_WORKERS: '1'
-          CUCUMBER_RETRY: '1'
           BASE_URL: ${{ secrets.BASE_URL }}
           SIGNUP_OTP: ${{ secrets.SIGNUP_OTP }}
           VERCEL_PROTECTION_BYPASS: ${{ secrets.VERCEL_PROTECTION_BYPASS }}
           ALLURE_TMS_URL: https://github.com/${{ github.repository }}/issues/
-        run: npx cucumber-js --profile smoke
+        run: npx playwright test --project=ui --retries=1
 
       - name: Generate Allure report
-        if: ${{ !cancelled() }}
+        if: always()
         run: npm run allure:generate
         continue-on-error: true
 
       - name: Generate traceability matrix
-        if: ${{ !cancelled() }}
+        if: always()
         env:
           ALLURE_TMS_URL: https://github.com/${{ github.repository }}/issues/
         run: npm run traceability:generate
         continue-on-error: true
 
       - name: GitHub Job Summary (TC linkage + failures)
-        if: ${{ !cancelled() }}
+        if: always()
         env:
           ALLURE_TMS_URL: https://github.com/${{ github.repository }}/issues/
-          BROWSER: ${{ matrix.browser }}
+          BROWSER: chromium
         run: npm run ci:summary
 
       - name: Upload Allure + failure artifacts
-        if: ${{ !cancelled() }}
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: cucumber-${{ matrix.browser }}-artifacts
+          name: playwright-ui-artifacts
           path: |
             reports/allure-results/
             reports/allure-report/
-            reports/cucumber.json
             reports/traces/
             reports/screenshots/
             reports/logs/
             docs/traceability-matrix.md
+            test-results/
           retention-days: 14
           if-no-files-found: warn
 
-      - name: Fail job if Cucumber failed
-        if: steps.cucumber.outcome == 'failure'
+      - name: Fail job if Playwright failed
+        if: steps.playwright.outcome == 'failure'
         run: exit 1
 
   publish-allure:
     name: Publish Allure (GitHub Pages)
-    needs: cucumber-loyalty
-    if: ${{ !cancelled() }}
+    needs: playwright-ui
+    if: always() && needs.playwright-ui.result != 'cancelled'
     runs-on: ubuntu-latest
     permissions:
       pages: write
@@ -149,10 +144,10 @@ jobs:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
-      - name: Download chromium Allure report
+      - name: Download Playwright UI Allure report
         uses: actions/download-artifact@v4
         with:
-          name: cucumber-chromium-artifacts
+          name: playwright-ui-artifacts
           path: artifact
 
       - name: Setup Pages

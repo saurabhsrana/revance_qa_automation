@@ -1,72 +1,68 @@
 /**
  * Writes a GitHub Actions Job Summary with pass/fail, failure details,
- * inline screenshots, and links to artifacts / Allure on GitHub Pages.
+ * and links to artifacts / Allure on GitHub Pages.
+ *
+ * Prefers Allure result JSON (Playwright). Falls back to cucumber.json if present.
  *
  * Env:
  *   ALLURE_TMS_URL — base URL ending with /issues/
- *   BROWSER — matrix browser label (optional)
+ *   BROWSER — browser label (optional)
  *   GITHUB_REPOSITORY, GITHUB_RUN_ID — set by Actions
  *   GITHUB_STEP_SUMMARY — set automatically by Actions
  */
-const fs = require('node:fs');
-const path = require('node:path');
+const fs = require("node:fs");
+const path = require("node:path");
 
-const jsonPath = path.resolve('reports/cucumber.json');
-const screenshotsDir = path.resolve('reports/screenshots');
-const tracesDir = path.resolve('reports/traces');
-const allureReportDir = path.resolve('reports/allure-report');
+const cucumberJsonPath = path.resolve("reports/cucumber.json");
+const allureResultsDir = path.resolve("reports/allure-results");
+const screenshotsDir = path.resolve("reports/screenshots");
+const tracesDir = path.resolve("reports/traces");
+const allureReportDir = path.resolve("reports/allure-report");
 const tmsBase =
   process.env.ALLURE_TMS_URL ||
-  'https://github.com/revance/PlaywrightAutomationAgent/issues/';
+  "https://github.com/saurabhsrana/revance_qa_automation/issues/";
+
+function truncate(text, max = 600) {
+  const s = String(text || "");
+  if (s.length <= max) return s;
+  return `${s.slice(0, max)}…`;
+}
+
+function statusEmoji(status) {
+  if (status === "passed") return "pass";
+  if (status === "failed" || status === "broken") return "fail";
+  if (status === "skipped" || status === "pending") return "skip";
+  return status || "unknown";
+}
+
+function extractTcFromLabels(labels) {
+  const ids = [];
+  for (const label of labels || []) {
+    if (label?.name === "tag" && /^TC-(\d+)$/i.test(String(label.value || ""))) {
+      ids.push(RegExp.$1);
+    }
+    if (label?.name === "tms" && /(\d+)/.test(String(label.value || ""))) {
+      ids.push(RegExp.$1);
+    }
+  }
+  return [...new Set(ids)];
+}
 
 function extractTcIds(tags) {
   const ids = [];
   for (const tag of tags || []) {
-    const name = typeof tag === 'string' ? tag : tag.name;
-    const m = String(name || '').match(/@TC-(\d+)/i);
+    const name = typeof tag === "string" ? tag : tag.name;
+    const m = String(name || "").match(/@TC-(\d+)/i);
     if (m) ids.push(m[1]);
   }
   return ids;
-}
-
-function statusEmoji(status) {
-  if (status === 'passed') return 'pass';
-  if (status === 'failed') return 'fail';
-  if (status === 'skipped' || status === 'pending') return 'skip';
-  return status || 'unknown';
-}
-
-function scenarioStatus(elements) {
-  const steps = (elements.steps || []).filter((s) => s.result);
-  if (steps.some((s) => s.result.status === 'failed')) return 'failed';
-  if (steps.every((s) => s.result.status === 'passed' || s.result.status === 'skipped')) {
-    if (steps.some((s) => s.result.status === 'passed')) return 'passed';
-  }
-  if (steps.every((s) => s.result.status === 'skipped' || s.result.status === 'pending')) {
-    return 'skipped';
-  }
-  return steps[steps.length - 1]?.result?.status || 'unknown';
-}
-
-function failedSteps(el) {
-  return (el.steps || [])
-    .filter((s) => s.result?.status === 'failed')
-    .map((s) => ({
-      name: s.name || 'unknown step',
-      error: String(s.result?.error_message || s.result?.message || 'No error message').trim(),
-    }));
-}
-
-function truncate(text, max = 600) {
-  if (text.length <= max) return text;
-  return `${text.slice(0, max)}…`;
 }
 
 function listPngFiles(dir, limit = 5) {
   if (!fs.existsSync(dir)) return [];
   return fs
     .readdirSync(dir)
-    .filter((f) => f.toLowerCase().endsWith('.png'))
+    .filter((f) => f.toLowerCase().endsWith(".png"))
     .slice(0, limit);
 }
 
@@ -74,55 +70,164 @@ function listZipFiles(dir, limit = 5) {
   if (!fs.existsSync(dir)) return [];
   return fs
     .readdirSync(dir)
-    .filter((f) => f.toLowerCase().endsWith('.zip'))
+    .filter((f) => f.toLowerCase().endsWith(".zip"))
     .slice(0, limit);
 }
 
 function embedScreenshot(fileName) {
   const filePath = path.join(screenshotsDir, fileName);
-  if (!fs.existsSync(filePath)) return '';
-  const base64 = fs.readFileSync(filePath).toString('base64');
+  if (!fs.existsSync(filePath)) return "";
+  const base64 = fs.readFileSync(filePath).toString("base64");
   return [
     `<details><summary>${fileName}</summary>`,
     `<img src="data:image/png;base64,${base64}" alt="${fileName}" width="900"/>`,
-    '</details>',
-    '',
-  ].join('\n');
+    "</details>",
+    "",
+  ].join("\n");
 }
 
 function artifactLinks() {
   const repo = process.env.GITHUB_REPOSITORY;
   const runId = process.env.GITHUB_RUN_ID;
-  const browser = process.env.BROWSER || 'chromium';
   if (!repo || !runId) return [];
 
   const runUrl = `https://github.com/${repo}/actions/runs/${runId}`;
-  const artifactName = `cucumber-${browser}-artifacts`;
+  const artifactName = "playwright-ui-artifacts";
   return [
-    '## Reports & artifacts',
-    '',
+    "## Reports & artifacts",
+    "",
     `- [Download \`${artifactName}\` (Allure HTML, traces, screenshots)](${runUrl}#artifacts)`,
-    `- Open \`reports/allure-report/index.html\` from the zip for the full Allure UI (pass/fail, attachments, trace zips).`,
-    `- Playwright traces: extract \`reports/traces/*.zip\` and run \`npx playwright show-trace <file.zip>\`.`,
-    '',
-    'After the **publish-allure** job completes, the latest Allure report is also published to **GitHub Pages** (see that job Summary for the URL).',
-    '',
+    "- Open `reports/allure-report/index.html` from the zip for the full Allure UI (pass/fail, attachments, trace zips).",
+    "- Playwright traces: extract Allure `*-attachment.zip` / `test-results/**/trace.zip` and run `npx playwright show-trace <file.zip>`.",
+    "",
+    "After the **publish-allure** job completes, the latest Allure report is also published to **GitHub Pages** (see that job Summary for the URL).",
+    "",
   ];
 }
 
-function buildMarkdown(features) {
-  const lines = [
-    '## Loyalty Cucumber results',
-    '',
-  ];
-
-  const browser = process.env.BROWSER;
-  if (browser) {
-    lines.push(`**Browser:** \`${browser}\``);
-    lines.push('');
+function appendCommonTail(lines) {
+  const screenshots = listPngFiles(screenshotsDir);
+  if (screenshots.length > 0) {
+    lines.push("## Failure screenshots", "");
+    for (const shot of screenshots) {
+      lines.push(embedScreenshot(shot));
+    }
   }
 
-  lines.push('| Status | Scenario | Test case |', '| --- | --- | --- |');
+  const traces = listZipFiles(tracesDir);
+  if (traces.length > 0) {
+    lines.push("## Playwright traces (in artifact zip)", "");
+    for (const trace of traces) {
+      lines.push(
+        `- \`reports/traces/${trace}\` — open locally with \`npx playwright show-trace\``,
+      );
+    }
+    lines.push("");
+  }
+
+  if (fs.existsSync(path.join(allureReportDir, "index.html"))) {
+    lines.push(
+      "## Allure HTML report",
+      "",
+      "Included in the job artifact at `reports/allure-report/index.html` (single-file bundle — open offline after download).",
+      "",
+    );
+  }
+
+  lines.push(...artifactLinks());
+  lines.push(
+    `Allure TMS base: \`${tmsBase}\` — tag tests with \`TC-<github-issue-number>\` / \`allure.tms\`.`,
+  );
+}
+
+function buildFromAllure(results) {
+  const lines = ["## Playwright UI results", ""];
+  const browser = process.env.BROWSER;
+  if (browser) {
+    lines.push(`**Browser:** \`${browser}\``, "");
+  }
+  lines.push("| Status | Test | Test case |", "| --- | --- | --- |");
+
+  let passed = 0;
+  let failed = 0;
+  let other = 0;
+  const failureDetails = [];
+
+  for (const r of results) {
+    const status = r.status || "unknown";
+    if (status === "passed") passed += 1;
+    else if (status === "failed" || status === "broken") failed += 1;
+    else other += 1;
+
+    const tcIds = extractTcFromLabels(r.labels);
+    const tcLinks =
+      tcIds.length > 0
+        ? tcIds.map((id) => `[TC-${id}](${tmsBase}${id})`).join(", ")
+        : "_none_";
+
+    lines.push(
+      `| ${statusEmoji(status)} | ${r.name || r.fullName || "unnamed"} | ${tcLinks} |`,
+    );
+
+    if (status === "failed" || status === "broken") {
+      failureDetails.push({
+        name: r.name || r.fullName || "unnamed",
+        error: r.statusDetails?.message || r.statusDetails?.trace || "No error message",
+      });
+    }
+  }
+
+  lines.push("", `**Totals:** ${passed} passed, ${failed} failed, ${other} other`, "");
+
+  if (failureDetails.length > 0) {
+    lines.push("## Failure details", "");
+    for (const f of failureDetails) {
+      lines.push(`### ${f.name}`, "", "```", truncate(f.error), "```", "");
+    }
+  }
+
+  appendCommonTail(lines);
+  return lines.join("\n");
+}
+
+function scenarioStatus(elements) {
+  const steps = (elements.steps || []).filter((s) => s.result);
+  if (steps.some((s) => s.result.status === "failed")) return "failed";
+  if (
+    steps.every(
+      (s) => s.result.status === "passed" || s.result.status === "skipped",
+    )
+  ) {
+    if (steps.some((s) => s.result.status === "passed")) return "passed";
+  }
+  if (
+    steps.every(
+      (s) => s.result.status === "skipped" || s.result.status === "pending",
+    )
+  ) {
+    return "skipped";
+  }
+  return steps[steps.length - 1]?.result?.status || "unknown";
+}
+
+function failedSteps(el) {
+  return (el.steps || [])
+    .filter((s) => s.result?.status === "failed")
+    .map((s) => ({
+      name: s.name || "unknown step",
+      error: String(
+        s.result?.error_message || s.result?.message || "No error message",
+      ).trim(),
+    }));
+}
+
+function buildFromCucumber(features) {
+  const lines = ["## Loyalty Cucumber results", ""];
+  const browser = process.env.BROWSER;
+  if (browser) {
+    lines.push(`**Browser:** \`${browser}\``, "");
+  }
+  lines.push("| Status | Scenario | Test case |", "| --- | --- | --- |");
 
   let passed = 0;
   let failed = 0;
@@ -131,26 +236,27 @@ function buildMarkdown(features) {
 
   for (const feature of features) {
     for (const el of feature.elements || []) {
-      if (el.type && el.type !== 'scenario' && el.type !== 'scenario_outline') continue;
+      if (el.type && el.type !== "scenario" && el.type !== "scenario_outline")
+        continue;
       const status = scenarioStatus(el);
-      if (status === 'passed') passed += 1;
-      else if (status === 'failed') failed += 1;
+      if (status === "passed") passed += 1;
+      else if (status === "failed") failed += 1;
       else other += 1;
 
       const tcIds = extractTcIds(el.tags);
       const tcLinks =
         tcIds.length > 0
-          ? tcIds.map((id) => `[TC-${id}](${tmsBase}${id})`).join(', ')
-          : '_none_';
+          ? tcIds.map((id) => `[TC-${id}](${tmsBase}${id})`).join(", ")
+          : "_none_";
 
       lines.push(
-        `| ${statusEmoji(status)} | ${el.name || feature.name || 'unnamed'} | ${tcLinks} |`
+        `| ${statusEmoji(status)} | ${el.name || feature.name || "unnamed"} | ${tcLinks} |`,
       );
 
-      if (status === 'failed') {
+      if (status === "failed") {
         for (const step of failedSteps(el)) {
           failureDetails.push({
-            scenario: el.name || feature.name || 'unnamed',
+            scenario: el.name || feature.name || "unnamed",
             step: step.name,
             error: step.error,
           });
@@ -159,75 +265,55 @@ function buildMarkdown(features) {
     }
   }
 
-  lines.push('');
-  lines.push(`**Totals:** ${passed} passed, ${failed} failed, ${other} other`);
-  lines.push('');
+  lines.push("", `**Totals:** ${passed} passed, ${failed} failed, ${other} other`, "");
 
   if (failureDetails.length > 0) {
-    lines.push('## Failure details');
-    lines.push('');
+    lines.push("## Failure details", "");
     for (const f of failureDetails) {
-      lines.push(`### ${f.scenario}`);
-      lines.push('');
-      lines.push(`**Failed step:** \`${f.step}\``);
-      lines.push('');
-      lines.push('```');
-      lines.push(truncate(f.error));
-      lines.push('```');
-      lines.push('');
+      lines.push(
+        `### ${f.scenario}`,
+        "",
+        `**Failed step:** \`${f.step}\``,
+        "",
+        "```",
+        truncate(f.error),
+        "```",
+        "",
+      );
     }
   }
 
-  const screenshots = listPngFiles(screenshotsDir);
-  if (screenshots.length > 0) {
-    lines.push('## Failure screenshots');
-    lines.push('');
-    for (const shot of screenshots) {
-      lines.push(embedScreenshot(shot));
-    }
-  }
+  appendCommonTail(lines);
+  return lines.join("\n");
+}
 
-  const traces = listZipFiles(tracesDir);
-  if (traces.length > 0) {
-    lines.push('## Playwright traces (in artifact zip)');
-    lines.push('');
-    for (const trace of traces) {
-      lines.push(`- \`reports/traces/${trace}\` — open locally with \`npx playwright show-trace\``);
-    }
-    lines.push('');
-  }
-
-  if (fs.existsSync(path.join(allureReportDir, 'index.html'))) {
-    lines.push('## Allure HTML report');
-    lines.push('');
-    lines.push(
-      'Included in the job artifact at `reports/allure-report/index.html` (single-file bundle — open offline after download).'
+function loadAllureResults() {
+  if (!fs.existsSync(allureResultsDir)) return [];
+  return fs
+    .readdirSync(allureResultsDir)
+    .filter((f) => f.endsWith("-result.json"))
+    .map((f) =>
+      JSON.parse(fs.readFileSync(path.join(allureResultsDir, f), "utf8")),
     );
-    lines.push('');
-  }
-
-  lines.push(...artifactLinks());
-
-  lines.push(
-    `Allure TMS base: \`${tmsBase}\` — tag scenarios with \`@TC-<github-issue-number>\`.`
-  );
-  return lines.join('\n');
 }
 
 function main() {
-  if (!fs.existsSync(jsonPath)) {
-    const msg = `No ${jsonPath} — skip job summary.`;
+  const allureResults = loadAllureResults();
+  let md;
+
+  if (allureResults.length > 0) {
+    md = buildFromAllure(allureResults);
+  } else if (fs.existsSync(cucumberJsonPath)) {
+    const features = JSON.parse(fs.readFileSync(cucumberJsonPath, "utf8"));
+    md = buildFromCucumber(Array.isArray(features) ? features : []);
+  } else {
+    const msg =
+      "No Allure results or cucumber.json — skip detailed job summary.";
     console.warn(msg);
-    if (process.env.GITHUB_STEP_SUMMARY) {
-      fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `## Loyalty Cucumber results\n\n${msg}\n`);
-    }
-    return;
+    md = `## Test results\n\n${msg}\n`;
   }
 
-  const features = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
-  const md = buildMarkdown(Array.isArray(features) ? features : []);
   console.log(md);
-
   if (process.env.GITHUB_STEP_SUMMARY) {
     fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${md}\n`);
   }

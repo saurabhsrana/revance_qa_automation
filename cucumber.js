@@ -9,7 +9,7 @@ const tmsUrl =
   process.env.ALLURE_TMS_URL ||
   "https://github.com/revance/PlaywrightAutomationAgent/issues/";
 
-/** Loyalty suites only: welcome + complete profile. */
+/** Loyalty suites: welcome + complete profile. */
 const LOYALTY_TAGS = "(@welcome or @completeprofile)";
 
 /**

@@ -106,6 +106,16 @@ export default tseslint.config(
     },
   },
   {
+    // Specs are scenario-length by design (converted from Gherkin).
+    files: ['tests/**/*.ts'],
+    rules: {
+      'max-lines-per-function': 'off',
+      'max-lines': 'off',
+      '@typescript-eslint/explicit-function-return-type': 'off',
+      'sonarjs/no-duplicate-string': 'warn',
+    },
+  },
+  {
     files: ['**/*.js', '**/*.cjs'],
     extends: [tseslint.configs.disableTypeChecked],
     languageOptions: {
