@@ -24,7 +24,9 @@ export const test = base.extend<LoyaltyFixtures>({
     await use(new SignupPage(page));
   },
 
-  loyaltyState: async (_fixtures, use) => {
+  // Playwright requires object-destructuring for fixture deps (empty deps = {}).
+  // eslint-disable-next-line no-empty-pattern -- no upstream fixtures needed
+  loyaltyState: async ({}, use) => {
     const state: LoyaltyState = {};
     await use(state);
   },

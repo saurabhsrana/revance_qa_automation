@@ -108,7 +108,24 @@ jobs:
           SIGNUP_OTP: ${{ secrets.SIGNUP_OTP }}
           VERCEL_PROTECTION_BYPASS: ${{ secrets.VERCEL_PROTECTION_BYPASS }}
           ALLURE_TMS_URL: https://github.com/${{ github.repository }}/issues/
-        run: npx playwright test --project=ui --retries=1
+        run: |
+          set -o pipefail
+          {
+            echo "### Playwright --list"
+            npx playwright test --project=ui --list || true
+            echo ""
+            echo "### Playwright run"
+            npx playwright test --project=ui --retries=1
+          } 2>&1 | tee playwright-ci.log
+          status=${PIPESTATUS[0]}
+          {
+            echo "## Playwright console (tail)"
+            echo ""
+            echo '```'
+            tail -n 80 playwright-ci.log || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit "$status"
 
       - name: Surface Playwright last-run into Job Summary
         if: always()
@@ -161,6 +178,7 @@ jobs:
             reports/logs/
             docs/traceability-matrix.md
             test-results/
+            playwright-ci.log
           retention-days: 14
           if-no-files-found: warn
 
