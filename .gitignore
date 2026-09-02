@@ -5,6 +5,7 @@
 
 # Runtime / tooling
 node_modules/
+.tools/
 /test-results/
 /playwright-report/
 /blob-report/
