@@ -57,9 +57,12 @@ export default defineConfig({
   use: {
     baseURL: config.baseUrl,
     headless: shouldRunHeadless(),
+    // Traces cover most debugging needs cheaply (and still attach to Allure on
+    // failure). Video is opt-in via PW_VIDEO=on — e.g. a manual workflow_dispatch
+    // with enable_video — for animation/drag-drop bugs where seeing motion matters.
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
-    video: "retain-on-failure",
+    video: process.env.PW_VIDEO === "on" ? "retain-on-failure" : "off",
     actionTimeout: 60_000,
     navigationTimeout: 60_000,
     ...buildBrowserContextOptions(),

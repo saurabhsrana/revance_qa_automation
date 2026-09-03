@@ -15,6 +15,9 @@
 # After a run:
 #   - Playwright UI (chromium|firefox|webkit) jobs → Summary + per-browser artifacts
 #   - publish-allure → merges Allure results from all browsers, then GitHub Pages URL
+#   - Manual "Run workflow" can set enable_video=true (sets PW_VIDEO=on) when motion matters
+#
+# Artifact retention: keep upload-artifact retention-days in sync (default 14 below).
 
 name: CI
 
@@ -24,6 +27,11 @@ on:
   pull_request:
     branches: [main, master]
   workflow_dispatch:
+    inputs:
+      enable_video:
+        description: Record video on failure (larger artifacts; for animation/drag-drop debugging)
+        type: boolean
+        default: false
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -108,6 +116,8 @@ jobs:
           TEST_ENV: qa
           BROWSER: ${{ matrix.browser }}
           PARALLEL_WORKERS: '1'
+          # push/PR: inputs.enable_video is unset → off. Manual run: enable_video checkbox.
+          PW_VIDEO: ${{ inputs.enable_video == true && 'on' || 'off' }}
           BASE_URL: ${{ secrets.BASE_URL }}
           SIGNUP_OTP: ${{ secrets.SIGNUP_OTP }}
           VERCEL_PROTECTION_BYPASS: ${{ secrets.VERCEL_PROTECTION_BYPASS }}
@@ -274,7 +284,7 @@ jobs:
         with:
           name: allure-history-jsonl
           path: reports/allure-history/
-          retention-days: 30
+          retention-days: 14
           if-no-files-found: warn
 
   # Always runs after combine (including on PRs) so the last visible job is not a grey "skipped" Pages deploy.
