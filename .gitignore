@@ -1,0 +1,28 @@
+# Secrets / local env
+.env
+.env.local
+.env.*.local
+
+# Runtime / tooling
+node_modules/
+.tools/
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/
+/screenshots/
+
+# Allure + failure artifacts
+reports/allure-results/
+reports/allure-report/
+reports/allure-history/
+reports/traces/
+reports/screenshots/
+reports/logs/
+reports/report.html
+
+# Debug captures (may contain session tokens or PII) — keep folder placeholders only
+reports/*.png
+reports/*.json
+!reports/**/.gitkeep

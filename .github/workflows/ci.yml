@@ -1,0 +1,434 @@
+# Loyalty test automation CI
+#
+# Triggers:
+#   - Push to main/master → full pipeline (lint + E2E + Allure + Pages)
+#   - Pull request → Lint & typecheck always; E2E only with ready-for-e2e label
+#   - Manual run: GitHub → Actions → CI → Run workflow
+#
+# E2E tests hit a shared QA environment, so on PRs they are gated behind the
+# ready-for-e2e label to avoid multiple PRs colliding on shared test data.
+# Add the label on the PR sidebar to trigger E2E; new commits (synchronize) on
+# an already-labeled PR re-run E2E automatically. Removing the label skips E2E
+# on the next unlabeled/synchronize evaluation.
+#
+# QA targets from src/config/env.qa.ts (TEST_ENV=qa) — baseUrl and otp; no GitHub secrets required.
+#
+# One-time GitHub Pages setup (for browsable Allure report):
+#   Settings → Pages → Build and deployment → Source: GitHub Actions
+#
+# After a run:
+#   - Playwright UI (chromium|firefox) jobs → Summary + per-browser artifacts
+#   - publish-allure → merges Allure results from all browsers, then GitHub Pages URL
+#   - Manual "Run workflow" can set enable_video=true (sets PW_VIDEO=on) when motion matters
+#
+# Artifact retention: keep upload-artifact retention-days in sync (default 14 below).
+
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+  workflow_dispatch:
+    inputs:
+      enable_video:
+        description: Record video on failure (larger artifacts; for animation/drag-drop debugging)
+        type: boolean
+        default: false
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  static-checks:
+    name: Lint & typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Prettier check
+        run: npm run format:check
+
+  playwright-ui:
+    name: Playwright UI (${{ matrix.browser }})
+    needs: static-checks
+    # Push / workflow_dispatch: always run E2E after lint.
+    # pull_request: only when the PR has the ready-for-e2e label (skipped otherwise → neutral check).
+    if: >-
+      github.event_name == 'push'
+      || github.event_name == 'workflow_dispatch'
+      || (github.event_name == 'pull_request'
+          && contains(github.event.pull_request.labels.*.name, 'ready-for-e2e'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        # WebKit omitted: Vercel Security Checkpoint (Code 21) blocks headless WebKit without bypass.
+        browser: [chromium, firefox]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - run: npm ci
+
+      - name: Install Playwright browser (${{ matrix.browser }})
+        run: npx playwright install --with-deps ${{ matrix.browser }}
+
+      - name: Reset Allure folders
+        run: npm run allure:clean
+
+      - name: Log QA config source
+        run: |
+          {
+            echo "## QA config"
+            echo ""
+            echo "- Browser matrix: \`${{ matrix.browser }}\`"
+            echo "- TEST_ENV: \`qa\` → \`src/config/env.qa.ts\` (baseUrl, otp)"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Playwright UI (--project=${{ matrix.browser }})
+        id: playwright
+        continue-on-error: true
+        env:
+          CI: true
+          HEADLESS: 'true'
+          TEST_ENV: qa
+          BROWSER: ${{ matrix.browser }}
+          PARALLEL_WORKERS: '1'
+          # push/PR: inputs.enable_video is unset → off. Manual run: enable_video checkbox.
+          PW_VIDEO: ${{ inputs.enable_video == true && 'on' || 'off' }}
+        run: |
+          set -o pipefail
+          {
+            echo "### Playwright --list"
+            npx playwright test --project=${{ matrix.browser }} --list || true
+            echo ""
+            echo "### Playwright run"
+            npx playwright test --project=${{ matrix.browser }} --retries=1
+          } 2>&1 | tee playwright-ci.log
+          status=${PIPESTATUS[0]}
+          {
+            echo "## Playwright console (tail) — ${{ matrix.browser }}"
+            echo ""
+            echo '```'
+            tail -n 80 playwright-ci.log || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit "$status"
+
+      - name: Surface Playwright last-run into Job Summary
+        if: always()
+        run: |
+          {
+            echo "## Playwright last-run (${{ matrix.browser }})"
+            echo ""
+            if [ -f test-results/.last-run.json ]; then
+              echo '```json'
+              cat test-results/.last-run.json
+              echo '```'
+            else
+              echo "_No test-results/.last-run.json (Playwright may have failed before writing results)._"
+            fi
+            echo ""
+            echo "### Spec files present"
+            echo ""
+            ls -la tests/ui || true
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Generate per-browser Allure report (artifact only)
+        if: always()
+        run: npm run allure:generate
+        continue-on-error: true
+
+      - name: Generate traceability matrix
+        if: always()
+        run: npm run traceability:generate
+        continue-on-error: true
+
+      - name: GitHub Job Summary (TC linkage + failures)
+        if: always()
+        env:
+          BROWSER: ${{ matrix.browser }}
+        run: npm run ci:summary
+
+      - name: Upload Allure raw results (${{ matrix.browser }})
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-results-${{ matrix.browser }}
+          path: reports/allure-results/
+          retention-days: 14
+          if-no-files-found: warn
+
+      - name: Upload Playwright failure artifacts (${{ matrix.browser }})
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-ui-${{ matrix.browser }}-artifacts
+          path: |
+            reports/allure-report/
+            reports/traces/
+            reports/screenshots/
+            reports/logs/
+            docs/traceability-matrix.md
+            test-results/
+            playwright-ci.log
+          retention-days: 14
+          if-no-files-found: warn
+
+      - name: Fail job if Playwright failed
+        if: steps.playwright.outcome == 'failure'
+        run: exit 1
+
+  combine-allure:
+    name: Combine Allure report
+    needs: playwright-ui
+    # always(): still combine when the UI matrix fails so the report includes failures.
+    # Skip when Playwright was skipped (no ready-for-e2e on PR, lint failed, or cancelled).
+    if: always() && (needs.playwright-ui.result == 'success' || needs.playwright-ui.result == 'failure')
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - run: npm ci
+
+      - name: Restore Allure trend history
+        uses: actions/cache@v4
+        with:
+          path: reports/allure-history
+          key: allure-history-${{ github.ref_name }}-${{ github.run_id }}
+          restore-keys: |
+            allure-history-${{ github.ref_name }}-
+            allure-history-
+
+      - name: Download Allure results from all browsers
+        uses: actions/download-artifact@v4
+        with:
+          pattern: allure-results-*
+          path: allure-inbox
+          merge-multiple: false
+
+      - name: Merge Allure results and generate combined report
+        env:
+          ALLURE_BROWSERS: chromium,firefox
+          ALLURE_OS: ${{ runner.os }}
+          TEST_ENV: qa
+          ALLURE_REPORT_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
+        run: |
+          set -euo pipefail
+          export ALLURE_NODE="$(node -v)"
+          mkdir -p reports/allure-results reports/allure-history
+          if [ -d allure-inbox ]; then
+            find allure-inbox -type f -print0 | while IFS= read -r -d '' f; do
+              cp -n "$f" "reports/allure-results/$(basename "$f")" 2>/dev/null || \
+                cp "$f" "reports/allure-results/$(basename "$f").${RANDOM}"
+            done
+          fi
+          echo "Merged Allure result files:"
+          ls -la reports/allure-results | head -n 50
+          # Writes executor.json, environment.properties, categories.json; ensures history.jsonl exists.
+          # allure:generate also runs prepare, then allure generate (reads allurerc historyPath + categories).
+          npm run allure:generate
+          test -f reports/allure-report/index.html
+          echo "History file after generate:"
+          ls -la reports/allure-history || true
+          wc -l reports/allure-history/history.jsonl || true
+
+      - name: Upload combined Allure report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-report-combined
+          path: reports/allure-report/
+          retention-days: 14
+          if-no-files-found: error
+
+      - name: Upload Allure history snapshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-history-jsonl
+          path: reports/allure-history/
+          retention-days: 14
+          if-no-files-found: warn
+
+  # Always runs after combine (including on PRs) so the last visible job is not a grey "skipped" Pages deploy.
+  publish-allure:
+    name: Publish Allure report
+    needs: combine-allure
+    # always(): run whenever combine produced a report (even if UI tests failed).
+    if: always() && needs.combine-allure.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Confirm combined report artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: allure-report-combined
+          path: allure-report
+
+      - name: Write report location to Job Summary
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          IS_MAIN_PUSH: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') }}
+        run: |
+          {
+            echo "## Allure report"
+            echo ""
+            echo "**Artifact:** \`allure-report-combined\` (contains \`index.html\`)"
+            echo ""
+            echo "Download: [Run artifacts]($RUN_URL#artifacts)"
+            echo ""
+            if [ "$IS_MAIN_PUSH" = "true" ]; then
+              echo "GitHub Pages deploy runs next (main push only)."
+            else
+              echo "Pages deploy skipped on PR runs — see the **allure-report-combined** build artifact above."
+              echo ""
+              echo "After download: unzip and open \`index.html\` in a browser."
+              echo ""
+              echo "Per-browser extras: \`allure-results-*\` and \`playwright-ui-*-artifacts\`."
+            fi
+            echo ""
+            echo "### Files in artifact"
+            echo ""
+            echo '```'
+            find allure-report -maxdepth 2 -type f | head -n 30
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Comment report link on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const body = [
+              '## Allure report (PR)',
+              '',
+              'GitHub Pages deploy is **skipped on pull requests** (environment protection allows `main` only).',
+              '',
+              `1. Open [this run’s Artifacts](${runUrl}#artifacts)`,
+              '2. Download **`allure-report-combined`**',
+              '3. Unzip and open **`index.html`**',
+              '',
+              '_Also available: `allure-results-*` and `playwright-ui-*-artifacts` per browser._',
+            ].join('\n');
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const marker = '## Allure report (PR)';
+            const existing = comments.find((c) => c.user?.type === 'Bot' && c.body?.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
+
+  publish-allure-pages:
+    name: Publish Allure (GitHub Pages)
+    needs: [combine-allure, publish-allure]
+    # always() is required: without it, GitHub skips this job when any upstream
+    # dependency chain includes a failed Playwright matrix job — even if combine/publish succeeded.
+    # Still main/master push only (never PR merge refs / environment protection).
+    if: >-
+      always()
+      && github.event_name == 'push'
+      && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+      && needs.combine-allure.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+      actions: read
+      contents: read
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Download combined Allure report
+        uses: actions/download-artifact@v4
+        with:
+          name: allure-report-combined
+          path: artifact
+
+      - name: Setup Pages
+        id: pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Allure site
+        id: upload
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: artifact
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: Allure report URL
+        if: always()
+        env:
+          DEPLOY_OUTCOME: ${{ steps.deployment.outcome }}
+          PAGE_URL: ${{ steps.deployment.outputs.page_url }}
+        run: |
+          {
+            echo "## Allure report publish"
+            echo ""
+            if [ "$DEPLOY_OUTCOME" = "success" ] && [ -n "$PAGE_URL" ]; then
+              echo "Combined Chromium + Firefox Allure report:"
+              echo ""
+              echo "[Open Allure report]($PAGE_URL)"
+              echo ""
+              echo "Raw URL: \`$PAGE_URL\`"
+            else
+              echo "GitHub Pages deploy did not succeed (outcome: \`${DEPLOY_OUTCOME:-unknown}\`)."
+              echo "Download **allure-report-combined** from this run’s artifacts."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
