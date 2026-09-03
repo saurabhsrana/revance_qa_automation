@@ -1,6 +1,7 @@
 /**
- * Shared test-data helpers formerly living only in Cucumber step definitions.
+ * Dynamic test-data helpers. Static values live in `src/data/constants.json`.
  */
+import constants from "../data/constants.json";
 
 /** UNIQUE → fresh 10-digit test phone so signup is not skipped for an existing account. */
 export function resolveUniquePhone(phone: string): string {
@@ -22,17 +23,8 @@ export function verificationCodeFromEnv(fallback: string): string {
   return process.env.SIGNUP_OTP?.trim() || fallback;
 }
 
-/** Former completeprofile Examples row — one-item array for easy future extension. */
-export const profileDataSets = [
-  {
-    phone: "UNIQUE",
-    verificationCode: "112233",
-    firstName: "John",
-    lastName: "Doe",
-    dateOfBirth: "1992-08-03",
-    email: "john.doe@test.com",
-    zip: "90210",
-    referralCode: "REF123",
-    expectedPoints: "250",
-  },
-] as const;
+/** Welcome page expected heading (from constants.json). */
+export const welcomeHeading = constants.welcome.heading;
+
+/** Former completeprofile Examples row — static payload from constants.json. */
+export const profileDataSets = constants.profileDataSets;

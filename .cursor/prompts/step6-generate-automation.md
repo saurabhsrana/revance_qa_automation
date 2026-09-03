@@ -14,5 +14,5 @@ Generate TypeScript Playwright tests:
 - No hardcoded waits
 - Save: tests/{{STORY_KEY}}.spec.ts
 - Title tests with TC ids
-- Extend existing src/pages classes when new interactions are needed
+- Extend existing src/page-objects classes when new interactions are needed
 ```

@@ -1,6 +1,6 @@
 import { test as base } from "@playwright/test";
-import { SignupPage } from "../pages/SignupPage";
-import { WelcomePage } from "../pages/WelcomePage";
+import { SignupPage } from "../page-objects/SignupPage";
+import { WelcomePage } from "../page-objects/WelcomePage";
 
 export type LoyaltyState = {
   phoneNumber?: string;

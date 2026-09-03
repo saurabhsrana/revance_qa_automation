@@ -1,10 +1,12 @@
 # Architecture Review — PlaywrightAutomationAgent
 
+> **Historical note (2026-09-02):** This review described the former **Cucumber + Gherkin** stack. The runner is now **Playwright Test only** (`tests/ui/`, no `features/` / `src/steps/` / `cucumber.js`). Prefer [`docs/FRAMEWORK.md`](FRAMEWORK.md) for the current layout.
+
 **Date:** 2026-09-01  
-**Scope inspected:** Loyalty Cucumber stack as it exists on disk today (`welcome` + `completeprofile` only)  
+**Scope inspected:** Loyalty Cucumber stack as it existed on disk that day (`welcome` + `completeprofile` only)  
 **Reviewer stance:** Senior software / test-architecture design review — evidence-based, not a generic checklist  
 
-**Stack summary:** Cucumber.js Gherkin → TypeScript step defs → Playwright POM → browser launched in Cucumber hooks. Reporting via Allure 3 + Winston + Playwright traces. No application server, DB, or REST API product under test in-repo — this is a **test automation framework**, so reliability/scalability are judged for suite growth, CI cost, and flaky external Loyalty UI — not backend throughput.
+**Stack summary (at review time):** Cucumber.js Gherkin → TypeScript step defs → Playwright POM → browser launched in Cucumber hooks. Reporting via Allure 3 + Winston + Playwright traces. No application server, DB, or REST API product under test in-repo — this is a **test automation framework**, so reliability/scalability are judged for suite growth, CI cost, and flaky external Loyalty UI — not backend throughput.
 
 ---
 

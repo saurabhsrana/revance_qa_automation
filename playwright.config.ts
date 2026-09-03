@@ -11,8 +11,8 @@ const tmsUrl =
   "https://github.com/saurabhsrana/revance_qa_automation/issues/";
 
 /**
- * Playwright Test runner — UI specs under tests/ui; API folder reserved (empty).
- * Cucumber remains available until Phase 3 removal.
+ * Playwright Test runner — UI specs under tests/ui (chromium/firefox/webkit);
+ * API folder reserved (empty).
  */
 export default defineConfig({
   timeout: 180_000,
@@ -64,9 +64,19 @@ export default defineConfig({
   },
   projects: [
     {
-      name: "ui",
+      name: "chromium",
       testDir: "./tests/ui",
       use: { ...devices["Desktop Chrome"] },
+    },
+    {
+      name: "firefox",
+      testDir: "./tests/ui",
+      use: { ...devices["Desktop Firefox"] },
+    },
+    {
+      name: "webkit",
+      testDir: "./tests/ui",
+      use: { ...devices["Desktop Safari"] },
     },
     {
       name: "api",

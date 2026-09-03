@@ -24,7 +24,7 @@ Given a Jira story key, deliver:
 
 - Fetch real Jira data via MCP (STEP 1) before analysis
 - Coverage target **95%+** before automation
-- Inspect `src/pages`, `src/fixtures`, `src/utils`, and existing `tests` before generating code
+- Inspect `src/page-objects`, `src/fixtures`, `src/utils`, and existing `tests` before generating code
 - TypeScript + POM; reuse fixtures and page methods; no duplicate page objects; no hardcoded waits
 - Run `npx playwright test` and heal up to **3** times
 - Do not ask unnecessary questions — if story key is present, execute the pipeline

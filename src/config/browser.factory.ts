@@ -60,7 +60,7 @@ export function buildBrowserContextOptions(): {
 }
 
 /**
- * Launch Chromium, Firefox, or WebKit for Cucumber workers.
+ * Launch Chromium, Firefox, or WebKit (shared helper; Playwright Test uses config projects).
  */
 export async function launchBrowser(
   name: SupportedBrowser = resolveBrowserName(),

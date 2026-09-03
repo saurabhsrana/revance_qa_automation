@@ -16,7 +16,6 @@ node_modules/
 # Allure + Cucumber + failure artifacts
 reports/allure-results/
 reports/allure-report/
-reports/cucumber.json
 reports/traces/
 reports/screenshots/
 reports/logs/

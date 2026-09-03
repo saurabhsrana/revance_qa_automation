@@ -15,7 +15,7 @@ Deliverables:
 Rules:
 - Fetch Jira via MCP
 - 95%+ manual coverage before automation
-- Inspect src/pages, src/fixtures, src/utils, tests before coding
+- Inspect src/page-objects, src/fixtures, src/utils, tests before coding
 - TypeScript POM, reuse fixtures/methods, no duplicate POs, no hardcoded waits
 - npx playwright test with max 3 heal retries
 ```

@@ -93,17 +93,17 @@ Checklist: [coverage-checklist.md](coverage-checklist.md)
 
 | Path | Purpose |
 |------|---------|
-| `src/pages/` | Canonical POM — **reuse, never duplicate**. Loyalty: `WelcomePage`, `SignupPage`, `HomePage`. OCE: `OcePortalPage`, left nav, staff. |
-| `src/fixtures/index.ts` | Revance fixtures (`welcomePage`, `signupPage`, `authenticatedPage`) |
-| `src/config/` + `oceAuth.ts` | `TEST_ENV` → `env.{dev\|qa\|prod}.ts`. Playwright specs must set `BASE_URL` / OCE auth (Cucumber hooks already do). |
-| `src/api/loyaltyEnrollment.ts` | Phase 1 API enroll: `enrollLoyaltyProfileViaApi` |
-| `src/hooks/` | Cucumber only — do not use for new `tests/*.spec.ts` |
-| `tests/` | Existing Playwright specs (copy `oceLoginHome`, `BL10-*` patterns) |
-| `playwright.config.ts` | Projects, timeouts, reporters, SauceDemo `globalSetup` |
+| `src/page-objects/` | Canonical POM — **reuse, never duplicate**. Loyalty: `WelcomePage`, `SignupPage`, `PhoneOtpFormComponent`. |
+| `src/fixtures/loyalty.fixture.ts` | Fixtures (`welcomePage`, `signupPage`, `loyaltyState`) |
+| `src/config/` + `oceAuth.ts` | `TEST_ENV` → `env.{dev\|qa\|prod}.ts`. Specs use `playwright.config.ts` `baseURL` + dotenv. |
+| `docs/api-enrollment-endpoints-reference.md` | Endpoint inventory for a future verified API rewrite (`tests/api/` reserved) |
+| `tests/ui/` | Active Playwright UI specs |
+| `tests/api/` | Reserved — do not populate until contract verified |
+| `playwright.config.ts` | Projects (`ui`, `api`), timeouts, Allure reporter, traces |
 
-**Phase 1 (login / enrollment) first** when the story needs a session: Loyalty welcome + OTP or `enrollLoyaltyProfileViaApi`; OCE `authenticatedPage`. Do not create a new login page. Do not use `ExamplePage` or SauceDemo for Revance stories.
+**Phase 1 (login / enrollment) first** when the story needs a session: Loyalty welcome + OTP via UI. Do not create a new login page.
 
-Also scan `features/` + `src/steps/` only for domain knowledge — **new automation for this agent goes under `tests/` as Playwright Test TypeScript**, not Cucumber.
+**New automation goes under `tests/` as Playwright Test TypeScript** — there is no Cucumber / `features/` / `src/steps/` layer.
 
 ## STEP 6 — Generate Playwright Scripts
 
@@ -112,7 +112,7 @@ Requirements (mandatory):
 - TypeScript
 - Page Object Model
 - Reuse fixtures and existing page methods
-- **No duplicated page objects** — extend existing classes in `src/pages/` when needed
+- **No duplicated page objects** — extend existing classes in `src/page-objects/` when needed
 - **No hardcoded waits** (`waitForTimeout`, fixed `sleep`) — use locator auto-waiting, `expect`, `waitFor({ state })`, network assertions
 
 Save to: `tests/{story-key}.spec.ts`

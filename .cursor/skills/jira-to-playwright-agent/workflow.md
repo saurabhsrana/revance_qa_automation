@@ -71,7 +71,7 @@ Also ensure each of the six categories has **at least one** TC when the story do
 Before coding (details: [framework.md](framework.md)):
 
 - [ ] Read Phase 1 login / enrollment: Loyalty `WelcomePage` + `SignupPage` or `enrollLoyaltyProfileViaApi`; OCE `authenticatedPage`
-- [ ] List page classes under `src/pages/` and methods relevant to the story (import from `src/pages/index.ts`)
+- [ ] List page classes under `src/page-objects/` and methods relevant to the story (import from `src/page-objects/index.ts`)
 - [ ] Check `src/fixtures/index.ts` — use `welcomePage` / `signupPage` / `authenticatedPage`; do not mix `session` fixtures
 - [ ] Load URLs from `src/config` + `resolveOceAuthConfig` (`TEST_ENV`). Set `process.env.BASE_URL` in Playwright specs
 - [ ] Read similar specs: `tests/oceLoginHome.spec.ts`, `tests/BL10-*.spec.ts`, `tests/api/loyalty.api.spec.ts`
@@ -97,7 +97,7 @@ test.describe('{STORY-KEY}: {short title}', () => {
 - One describe per story
 - Test titles include TC ids from the manual file
 - Use `expect` soft only when documenting multiple independent checks is intentional
-- Import page objects from `src/pages/`
+- Import page objects from `src/page-objects/`
 - New locators go on page objects, not inline in the spec (except trivial one-offs)
 
 ## STEP 7 — Execute

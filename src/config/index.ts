@@ -5,7 +5,7 @@ loadDotEnv();
 const envName = (
   process.env.TEST_ENV ||
   process.env.ENV ||
-  "dev"
+  "qa"
 ).toLowerCase();
 const resolvedEnv = envName === "qa" || envName === "prod" ? envName : "dev";
 

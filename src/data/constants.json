@@ -1,0 +1,18 @@
+{
+  "welcome": {
+    "heading": "Love your look (and more)"
+  },
+  "profileDataSets": [
+    {
+      "phone": "UNIQUE",
+      "verificationCode": "112233",
+      "firstName": "John",
+      "lastName": "Doe",
+      "dateOfBirth": "1992-08-03",
+      "email": "john.doe@test.com",
+      "zip": "90210",
+      "referralCode": "REF123",
+      "expectedPoints": "250"
+    }
+  ]
+}

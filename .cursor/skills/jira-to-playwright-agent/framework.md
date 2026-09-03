@@ -1,26 +1,21 @@
-# Playwright Framework Map (this repo)
+# Framework map (Jira-to-Playwright agent)
 
-**Product:** REVA Loyalty only. Config: `baseUrl` via `TEST_ENV` → `src/config/env.{dev|qa|prod}.ts` (config folder kept full including `oceAuth`).
+Canonical detail: [`docs/FRAMEWORK.md`](../../../docs/FRAMEWORK.md)
 
-| Feature | Steps | Pages | TMS tag |
-|---------|-------|-------|---------|
-| `features/welcome.feature` | `src/steps/welcome.steps.ts` | `WelcomePage`, `PhoneOtpFormComponent` | `@TC-1` |
-| `features/completeprofile.feature` | `src/steps/signup.steps.ts` | `SignupPage` | `@TC-2` |
-
-## Layout
+| Spec | Pages | TMS |
+|------|-------|-----|
+| `tests/ui/welcome.spec.ts` | `WelcomePage`, `PhoneOtpFormComponent` | `TC-1` |
+| `tests/ui/completeprofile.spec.ts` | `WelcomePage`, `SignupPage` | `TC-2` |
 
 ```
-cucumber.js                 # loyalty tags + Allure + cucumber.json
-allurerc.cjs
-features/
-src/pages/ hooks/ steps/ config/ utils/logger.ts
-scripts/ci-job-summary.js   # GitHub Job Summary TC links
+playwright.config.ts        # ui + api projects, Allure, traces
+tests/ui/                   # active Playwright specs
+tests/api/                  # reserved
+src/page-objects/           # POM
+src/fixtures/               # loyalty.fixture.ts
+src/config/                 # env + browser.factory
+src/data/                   # constants.json
+docs/api-enrollment-endpoints-reference.md
 ```
 
-## Reporting
-
-Allure only. After runs: `npm run allure:generate`. CI uploads Allure + Job Summary with `@TC-*` → GitHub Issues.
-
-## Agent output
-
-Prefer extending these two features/steps/pages. Add new `@TC-*` tags for GitHub Issue linkage.
+Prefer extending `tests/ui/` specs and `src/page-objects/`. Use `allure.tms` / `TC-*` for GitHub Issue linkage. No Cucumber / `features/` / `src/steps/`.

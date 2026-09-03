@@ -1,5 +1,6 @@
 import * as allure from "allure-js-commons";
 import { test } from "../../src/fixtures/loyalty.fixture";
+import { welcomeHeading } from "../../src/utils/testData";
 
 /**
  * Converted from features/welcome.feature (@TC-1).
@@ -19,8 +20,8 @@ test.describe("Revance Welcome Page", () => {
       await welcomePage.goto();
     });
 
-    await test.step('the main heading should be "Love your look (and more)"', async () => {
-      await welcomePage.expectHeading("Love your look (and more)");
+    await test.step(`the main heading should be "${welcomeHeading}"`, async () => {
+      await welcomePage.expectHeading(welcomeHeading);
     });
 
     await test.step("the Contact Us link should be visible", async () => {
