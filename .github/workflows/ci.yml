@@ -1,8 +1,15 @@
 # Loyalty test automation CI
 #
 # Triggers:
-#   - Push or PR to main/master
+#   - Push to main/master → full pipeline (lint + E2E + Allure + Pages)
+#   - Pull request → Lint & typecheck always; E2E only with ready-for-e2e label
 #   - Manual run: GitHub → Actions → CI → Run workflow
+#
+# E2E tests hit a shared QA environment, so on PRs they are gated behind the
+# ready-for-e2e label to avoid multiple PRs colliding on shared test data.
+# Add the label on the PR sidebar to trigger E2E; new commits (synchronize) on
+# an already-labeled PR re-run E2E automatically. Removing the label skips E2E
+# on the next unlabeled/synchronize evaluation.
 #
 # Required repo secrets (Settings → Secrets and variables → Actions):
 #   BASE_URL                  — Loyalty app URL (QA); falls back to env.qa.ts when unset
@@ -26,6 +33,7 @@ on:
     branches: [main, master]
   pull_request:
     branches: [main, master]
+    types: [opened, synchronize, reopened, labeled, unlabeled]
   workflow_dispatch:
     inputs:
       enable_video:
@@ -66,6 +74,13 @@ jobs:
   playwright-ui:
     name: Playwright UI (${{ matrix.browser }})
     needs: static-checks
+    # Push / workflow_dispatch: always run E2E after lint.
+    # pull_request: only when the PR has the ready-for-e2e label (skipped otherwise → neutral check).
+    if: >-
+      github.event_name == 'push'
+      || github.event_name == 'workflow_dispatch'
+      || (github.event_name == 'pull_request'
+          && contains(github.event.pull_request.labels.*.name, 'ready-for-e2e'))
     runs-on: ubuntu-latest
     timeout-minutes: 60
     strategy:
@@ -212,7 +227,7 @@ jobs:
     name: Combine Allure report
     needs: playwright-ui
     # always(): still combine when the UI matrix fails so the report includes failures.
-    # Skip only when the matrix never ran (lint failed → playwright skipped) or was cancelled.
+    # Skip when Playwright was skipped (no ready-for-e2e on PR, lint failed, or cancelled).
     if: always() && (needs.playwright-ui.result == 'success' || needs.playwright-ui.result == 'failure')
     runs-on: ubuntu-latest
     permissions:

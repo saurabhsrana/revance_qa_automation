@@ -54,13 +54,25 @@ allurerc.cjs
 
 Workflow: [`.github/workflows/ci.yml`](.github/workflows/ci.yml)
 
-### What runs on every push / PR
+### What runs when
+
+| Event | Lint & typecheck | Playwright E2E + Allure | GitHub Pages |
+|-------|------------------|-------------------------|--------------|
+| Push to `main` / `master` | Yes | Yes (full matrix) | Yes (after combine) |
+| Pull request (no label) | Yes | **Skipped** (neutral) | No |
+| Pull request + `ready-for-e2e` label | Yes | Yes | No (artifact + PR comment only) |
+| Manual **Run workflow** | Yes | Yes | Only if run on main |
+
+E2E hits a **shared QA environment**, so PR runs are gated behind the **`ready-for-e2e`** label to avoid colliding on shared test data.
+
+**How to run E2E on a PR:** open the PR → right sidebar **Labels** → add `ready-for-e2e` (create the label once if it doesn’t exist). No need to use the Actions tab. Pushing new commits while the label is still present re-runs E2E automatically. Remove the label to skip E2E on later updates.
+
+### Pipeline steps (when E2E runs)
 
 1. **Lint & typecheck** — ESLint, TypeScript, Prettier
-2. **Playwright UI** — `npx playwright test --project=ui`
-3. **Reports** — Allure generate (`if: always()`), traceability matrix, Job Summary
-4. **Artifacts** — `playwright-ui-artifacts` (Allure HTML, traces, screenshots; 14-day retention)
-5. **Pages** — best-effort Allure publish when GitHub Pages is enabled
+2. **Playwright UI** — chromium / webkit / firefox matrix
+3. **Reports** — Combine Allure, Job Summary, artifacts (14-day retention)
+4. **Pages** — Allure publish on main push only (`always()` so failed tests still deploy the report)
 
 ### One-time setup (repo secrets)
 
@@ -76,11 +88,11 @@ If QA shows **"We're verifying your browser"**, add `VERCEL_PROTECTION_BYPASS` f
 
 ### Manual run
 
-**Actions → CI → Run workflow** (uses `workflow_dispatch`).
+**Actions → CI → Run workflow** (uses `workflow_dispatch`). Optional checkbox: **enable_video** for failure videos.
 
 ### Reading results
 
 - **Playwright UI job → Summary** — pass/fail table, failure messages, secret presence
-- **Artifacts** — download `playwright-ui-artifacts`; open `reports/allure-report/index.html`
-- **publish-allure job → Summary** — GitHub Pages URL when Pages is configured
+- **Artifacts** — download `allure-report-combined` / per-browser artifacts; open `index.html`
+- **publish-allure job → Summary** — GitHub Pages URL when Pages is configured (main only)
 - **Traces** — from the artifact / Allure attachment, run `npx playwright show-trace <file.zip>`
