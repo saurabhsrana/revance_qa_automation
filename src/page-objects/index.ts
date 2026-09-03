@@ -1,5 +1,5 @@
 /**
- * Canonical Page Object Model barrel — Loyalty welcome + complete-profile only.
+ * Canonical Page Object Model barrel — Loyalty welcome + complete-profile.
  */
 export { BasePage } from "./BasePage";
 export { PhoneOtpFormComponent } from "./components/PhoneOtpFormComponent";

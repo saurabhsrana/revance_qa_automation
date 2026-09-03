@@ -1,7 +1,7 @@
 /**
  * Remove Allure raw results and generated HTML so the next run is fresh.
- * Old JSON files are NOT removed by Cucumber or allure:generate — they accumulate
- * and make allure:open show deleted features (Example page, API enrollment, etc.).
+ * Old JSON files are NOT removed by Playwright or allure:generate — they accumulate
+ * and make allure:open show deleted suites.
  */
 const fs = require('node:fs');
 const path = require('node:path');

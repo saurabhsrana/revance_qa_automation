@@ -84,7 +84,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ['src/pages/**/*.ts'],
+    files: ['src/page-objects/**/*.ts'],
     rules: legacyDebtRules,
   },
   {
@@ -97,11 +97,12 @@ export default tseslint.config(
     },
   },
   {
-    files: ['src/hooks/**/*.ts', 'src/steps/**/*.ts'],
+    // Specs are scenario-length by design.
+    files: ['tests/**/*.ts'],
     rules: {
-      'max-lines-per-function': 'warn',
-      complexity: 'warn',
-      'sonarjs/cognitive-complexity': 'warn',
+      'max-lines-per-function': 'off',
+      'max-lines': 'off',
+      '@typescript-eslint/explicit-function-return-type': 'off',
       'sonarjs/no-duplicate-string': 'warn',
     },
   },

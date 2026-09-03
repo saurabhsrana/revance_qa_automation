@@ -1,3 +1,4 @@
+import { expect } from "@playwright/test";
 import { BasePage } from "./BasePage";
 import { PhoneOtpFormComponent } from "./components/PhoneOtpFormComponent";
 
@@ -34,11 +35,26 @@ export class WelcomePage extends BasePage {
     await this.page.getByRole("link", { name: /contact us/i }).click();
   }
 
-  /** Whether the Contact Us link is visible (assertion belongs in the step). */
+  private contactUsLink() {
+    return this.page.getByRole("link", { name: /contact us/i });
+  }
+
+  /** Whether the Contact Us link is visible (boolean helper). */
   async isContactUsVisible(timeout = 15_000): Promise<boolean> {
-    const contactLink = this.page.getByRole("link", { name: /contact us/i });
+    const contactLink = this.contactUsLink();
     await contactLink.waitFor({ state: "visible", timeout });
     return contactLink.isVisible();
+  }
+
+  /** Assert Contact Us is visible — prefer this over raw locators in specs. */
+  async expectContactUsVisible(timeout = 15_000): Promise<void> {
+    await expect(this.contactUsLink()).toBeVisible({ timeout });
+  }
+
+  /** Assert welcome hero heading text. */
+  async expectHeading(expectedHeading: string): Promise<void> {
+    const heading = await this.getHeading();
+    expect(heading?.trim()).toBe(expectedHeading);
   }
 
   async clickTermsOfUse() {

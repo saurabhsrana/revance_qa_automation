@@ -4,11 +4,10 @@ import { type Locator, type Page, expect } from "@playwright/test";
 
 /**
  * Shared Page Object base — navigation, waits, and safe interactions.
- * Screen pages extend this; reusable widgets live under `src/pages/components/`.
+ * Screen pages extend this; reusable widgets live under `src/page-objects/components/`.
  *
- * Assertions for Cucumber live in step definitions. Playwright Test specs may assert
- * in the spec file. Prefer returning locators / booleans from pages over expect* helpers
- * for new code (FRAMEWORK.md §4 — hybrid exception documented there).
+ * Prefer returning locators / booleans from pages over expect* helpers
+ * for new code; Playwright Test specs may assert in the spec file.
  */
 export abstract class BasePage {
   constructor(readonly page: Page) {}
