@@ -10,6 +10,8 @@ const tmsUrl =
   process.env.ALLURE_TMS_URL ||
   "https://github.com/saurabhsrana/revance_qa_automation/issues/";
 
+const uiTestDir = "./tests/ui";
+
 /**
  * Playwright Test runner — UI specs under tests/ui (chromium/firefox/webkit);
  * API folder reserved (empty).
@@ -65,17 +67,17 @@ export default defineConfig({
   projects: [
     {
       name: "chromium",
-      testDir: "./tests/ui",
+      testDir: uiTestDir,
       use: { ...devices["Desktop Chrome"] },
     },
     {
       name: "firefox",
-      testDir: "./tests/ui",
+      testDir: uiTestDir,
       use: { ...devices["Desktop Firefox"] },
     },
     {
       name: "webkit",
-      testDir: "./tests/ui",
+      testDir: uiTestDir,
       use: { ...devices["Desktop Safari"] },
     },
     {

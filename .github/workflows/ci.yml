@@ -198,21 +198,15 @@ jobs:
         if: steps.playwright.outcome == 'failure'
         run: exit 1
 
-  publish-allure:
-    name: Publish Allure (GitHub Pages)
+  combine-allure:
+    name: Combine Allure report
     needs: playwright-ui
-    # Still run when some matrix browsers failed so a combined Allure HTML is published.
-    if: always() && needs.playwright-ui.result != 'cancelled'
+    # Run when matrix finished (pass or fail), not when skipped (e.g. lint failed) or cancelled.
+    if: always() && (needs.playwright-ui.result == 'success' || needs.playwright-ui.result == 'failure')
     runs-on: ubuntu-latest
-    continue-on-error: true
     permissions:
-      pages: write
-      id-token: write
       actions: read
       contents: read
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
 
@@ -234,7 +228,6 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p reports/allure-results
-          # Each artifact extracts to allure-inbox/allure-results-<browser>/
           if [ -d allure-inbox ]; then
             find allure-inbox -type f -print0 | while IFS= read -r -d '' f; do
               cp -n "$f" "reports/allure-results/$(basename "$f")" 2>/dev/null || \
@@ -245,6 +238,55 @@ jobs:
           ls -la reports/allure-results | head -n 50
           npm run allure:generate
 
+      - name: Upload combined Allure report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-report-combined
+          path: |
+            reports/allure-report/
+            reports/allure-results/
+          retention-days: 14
+          if-no-files-found: warn
+
+      - name: Job summary (PR vs main)
+        if: always()
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref }}
+        run: |
+          {
+            echo "## Allure report"
+            echo ""
+            if [ "$EVENT_NAME" = "pull_request" ]; then
+              echo "Pages deploy skipped on PR runs — see the **allure-report-combined** / **allure-results-*** / **playwright-ui-*-artifacts** build artifacts below."
+              echo ""
+              echo "Open \`reports/allure-report/index.html\` from the combined artifact after download."
+            else
+              echo "Combined report generated. Pages deploy runs only on push to \`main\`/\`master\` (see **Publish Allure** job)."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  publish-allure:
+    name: Publish Allure (GitHub Pages)
+    needs: combine-allure
+    # GitHub Pages environment protection allows main only — never deploy from PR merge refs.
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+      actions: read
+      contents: read
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Download combined Allure report
+        uses: actions/download-artifact@v4
+        with:
+          name: allure-report-combined
+          path: artifact
+
       - name: Setup Pages
         id: pages
         uses: actions/configure-pages@v5
@@ -253,7 +295,7 @@ jobs:
         id: upload
         uses: actions/upload-pages-artifact@v3
         with:
-          path: reports/allure-report
+          path: artifact/reports/allure-report
 
       - name: Deploy to GitHub Pages
         id: deployment
@@ -278,6 +320,6 @@ jobs:
               echo "Browser is labeled via Allure environmentInfo / Playwright project name on each result."
             else
               echo "GitHub Pages deploy did not succeed (outcome: \`${DEPLOY_OUTCOME:-unknown}\`)."
-              echo "Download per-browser \`allure-results-*\` / \`playwright-ui-*-artifacts\` and open locally."
+              echo "Download **allure-report-combined** and open \`reports/allure-report/index.html\` locally."
             fi
           } >> "$GITHUB_STEP_SUMMARY"
