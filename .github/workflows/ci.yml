@@ -218,6 +218,15 @@ jobs:
 
       - run: npm ci
 
+      - name: Restore Allure trend history
+        uses: actions/cache@v4
+        with:
+          path: reports/allure-history
+          key: allure-history-${{ github.ref_name }}-${{ github.run_id }}
+          restore-keys: |
+            allure-history-${{ github.ref_name }}-
+            allure-history-
+
       - name: Download Allure results from all browsers
         uses: actions/download-artifact@v4
         with:
@@ -226,9 +235,15 @@ jobs:
           merge-multiple: false
 
       - name: Merge Allure results and generate combined report
+        env:
+          ALLURE_BROWSERS: chromium,firefox,webkit
+          ALLURE_OS: ${{ runner.os }}
+          ALLURE_BASE_URL_DISPLAY: (QA default / BASE_URL secret — value not printed)
+          ALLURE_REPORT_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
         run: |
           set -euo pipefail
-          mkdir -p reports/allure-results
+          export ALLURE_NODE="$(node -v)"
+          mkdir -p reports/allure-results reports/allure-history
           if [ -d allure-inbox ]; then
             find allure-inbox -type f -print0 | while IFS= read -r -d '' f; do
               cp -n "$f" "reports/allure-results/$(basename "$f")" 2>/dev/null || \
@@ -237,8 +252,13 @@ jobs:
           fi
           echo "Merged Allure result files:"
           ls -la reports/allure-results | head -n 50
+          # Writes executor.json, environment.properties, categories.json; ensures history.jsonl exists.
+          # allure:generate also runs prepare, then allure generate (reads allurerc historyPath + categories).
           npm run allure:generate
           test -f reports/allure-report/index.html
+          echo "History file after generate:"
+          ls -la reports/allure-history || true
+          wc -l reports/allure-history/history.jsonl || true
 
       - name: Upload combined Allure report artifact
         uses: actions/upload-artifact@v4
@@ -247,6 +267,15 @@ jobs:
           path: reports/allure-report/
           retention-days: 14
           if-no-files-found: error
+
+      - name: Upload Allure history snapshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-history-jsonl
+          path: reports/allure-history/
+          retention-days: 30
+          if-no-files-found: warn
 
   # Always runs after combine (including on PRs) so the last visible job is not a grey "skipped" Pages deploy.
   publish-allure:

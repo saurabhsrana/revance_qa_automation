@@ -23,6 +23,8 @@ End-to-end chain:
 |-------|--------|
 | TMS link | `tests/ui/*.spec.ts` (`allure.tms`, `allure.tags`) |
 | Failure screenshot / video / trace | Playwright `use` + `allure-playwright` |
+| Overview metadata (executor / env / categories) | `scripts/allure-prepare-metadata.js` + `allurerc.cjs` |
+| Trend history (CI) | `reports/allure-history/history.jsonl` restored via Actions cache |
 | Matrix | `npm run traceability:generate` → `docs/traceability-matrix.md` |
 
 ```bash
@@ -34,6 +36,7 @@ npm run traceability:generate
 - `TEST_ENV` → `env.{dev|qa|prod}.ts`
 - Secrets via `.env` / GitHub Actions (`BASE_URL`, `SIGNUP_OTP`, `VERCEL_PROTECTION_BYPASS`)
 - Vercel bypass headers from `buildBrowserContextOptions()` in `playwright.config.ts`
+- Report UI: Allure 3 **`allure2`** plugin (classic Overview home) with `singleFile: true` — no deep-link away from Overview
 
 ## Commands
 
