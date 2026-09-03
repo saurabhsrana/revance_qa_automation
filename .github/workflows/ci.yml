@@ -201,7 +201,8 @@ jobs:
   combine-allure:
     name: Combine Allure report
     needs: playwright-ui
-    # Run when matrix finished (pass or fail), not when skipped (e.g. lint failed) or cancelled.
+    # always(): still combine when the UI matrix fails so the report includes failures.
+    # Skip only when the matrix never ran (lint failed → playwright skipped) or was cancelled.
     if: always() && (needs.playwright-ui.result == 'success' || needs.playwright-ui.result == 'failure')
     runs-on: ubuntu-latest
     permissions:
@@ -251,6 +252,7 @@ jobs:
   publish-allure:
     name: Publish Allure report
     needs: combine-allure
+    # always(): run whenever combine produced a report (even if UI tests failed).
     if: always() && needs.combine-allure.result == 'success'
     runs-on: ubuntu-latest
     permissions:
@@ -337,8 +339,14 @@ jobs:
   publish-allure-pages:
     name: Publish Allure (GitHub Pages)
     needs: [combine-allure, publish-allure]
-    # Only on main/master push — never on PR merge refs (environment protection).
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    # always() is required: without it, GitHub skips this job when any upstream
+    # dependency chain includes a failed Playwright matrix job — even if combine/publish succeeded.
+    # Still main/master push only (never PR merge refs / environment protection).
+    if: >-
+      always()
+      && github.event_name == 'push'
+      && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+      && needs.combine-allure.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       pages: write
